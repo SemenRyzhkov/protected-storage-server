@@ -10,6 +10,7 @@ import (
 	"protected-storage-server/internal/grpcserver"
 	"protected-storage-server/internal/repositories"
 	"protected-storage-server/internal/repositories/userrepository"
+	"protected-storage-server/internal/security"
 	"protected-storage-server/internal/service/userservice"
 	"protected-storage-server/proto"
 )
@@ -30,7 +31,12 @@ func NewGRPC(cfg config.Config) (*GRPCApp, error) {
 
 	userRepository := userrepository.New(db)
 	userService := userservice.New(userRepository)
-	serverImpl := grpcserver.NewServer(userService)
+	jwtHelper, err := security.New(cfg.Key)
+	if err != nil {
+		return nil, err
+	}
+
+	serverImpl := grpcserver.NewServer(userService, jwtHelper)
 
 	s := grpc.NewServer()
 

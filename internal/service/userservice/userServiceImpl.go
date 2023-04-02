@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 
 	"protected-storage-server/internal/repositories/userrepository"
-	"protected-storage-server/internal/security"
 )
 
 var _ UserService = &userServiceImpl{}
@@ -20,7 +19,7 @@ func (u userServiceImpl) Create(ctx context.Context, login, password, userID str
 	return u.userRepository.Save(ctx, userID, login, encodedPassword)
 }
 
-func New(userRepository userrepository.UserRepository, jwtHelper *security.JwtHelper) UserService {
+func New(userRepository userrepository.UserRepository) UserService {
 	return &userServiceImpl{
 		userRepository,
 	}
