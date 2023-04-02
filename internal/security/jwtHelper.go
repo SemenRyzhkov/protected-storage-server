@@ -1,12 +1,13 @@
 package security
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"google.golang.org/grpc/metadata"
 )
 
 type JwtHelper struct {
@@ -35,9 +36,16 @@ func (j *JwtHelper) GenerateJWT(userID string) (string, error) {
 	return tokenString, nil
 }
 
-func (j *JwtHelper) ExtractClaims(request *http.Request) (string, error) {
-	if request.Header["Authorization"] != nil {
-		tokenString := request.Header["Authorization"][0]
+func (j *JwtHelper) ExtractClaims(ctx context.Context) (string, error) {
+	var tokenString string
+
+	md, ok := metadata.FromIncomingContext(ctx)
+
+	if ok {
+		values := md.Get("token")
+		if len(values) > 0 {
+			tokenString = values[0]
+		}
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

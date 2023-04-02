@@ -3,6 +3,7 @@ package grpcserver
 import (
 	"context"
 	"errors"
+	"log"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"
@@ -46,5 +47,15 @@ func (s *Server) CreateUser(ctx context.Context, in *proto.UserAuthorizeRequest)
 	}
 	ctx = metadata.AppendToOutgoingContext(ctx, "token", token)
 
+	return nil, nil
+}
+
+// SaveRawData выполняет сохранение текстовой информации для авторизованного пользователя
+func (s *Server) SaveRawData(ctx context.Context, in *proto.SaveRawDataRequest) (*proto.ErrorResponse, error) {
+	userID, err := s.jwtHelper.ExtractClaims(ctx)
+	if err != nil {
+		return &proto.ErrorResponse{Error: "Internal Server Error"}, nil
+	}
+	log.Printf("User with id %s wants to add raw data", userID)
 	return nil, nil
 }
