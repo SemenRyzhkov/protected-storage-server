@@ -8,15 +8,23 @@ message ErrorResponse {
   string Error = 1;
 }
 
-message UserAuthorizeRequest {
+message UserRegisterRequest {
   string Login = 1;
   string Password = 2;
 }
 
+message UserAuthorizedRequest {
+  string Login = 1;
+  string Password = 2;
+}
+
+message AuthorizedResponse {
+  string Token = 1;
+}
+
 message SaveRawDataRequest {
   string Name = 1;
-  string Type = 2;
-  string Data = 3;
+  string Data = 2;
 }
 
 message SaveLoginWithPasswordRequest {
@@ -82,7 +90,8 @@ message GetAllSavedDataNamesResponse {
 }
 
 service GrpcService {
-  rpc CreateUser(UserAuthorizeRequest) returns (ErrorResponse);
+  rpc CreateUser(UserRegisterRequest) returns (AuthorizedResponse);
+  rpc LoginUser(UserAuthorizedRequest) returns (AuthorizedResponse);
 
   rpc SaveRawData(SaveRawDataRequest) returns (ErrorResponse);
   rpc SaveLoginWithPassword(SaveLoginWithPasswordRequest) returns (ErrorResponse);

@@ -5,7 +5,9 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
+	"protected-storage-server/internal/app/interceptors"
 	"protected-storage-server/internal/config"
 	"protected-storage-server/internal/grpcserver"
 	"protected-storage-server/internal/repositories"
@@ -31,16 +33,21 @@ func NewGRPC(cfg config.Config) (*GRPCApp, error) {
 
 	userRepository := userrepository.New(db)
 	userService := userservice.New(userRepository)
-	jwtHelper, err := security.New(cfg.Key)
+	jwtManager, err := security.NewJWTManager(cfg.Key, cfg.TokenDuration)
 	if err != nil {
 		return nil, err
 	}
 
-	serverImpl := grpcserver.NewServer(userService, jwtHelper)
+	serverImpl := grpcserver.NewServer(userService, jwtManager)
 
-	s := grpc.NewServer()
+	interceptor := interceptors.NewAuthInterceptor(jwtManager)
+
+	s := grpc.NewServer(
+		grpc.UnaryInterceptor(interceptor.Unary()),
+	)
 
 	proto.RegisterGrpcServiceServer(s, serverImpl)
+	reflection.Register(s)
 
 	return &GRPCApp{
 		GRPCServer: s,

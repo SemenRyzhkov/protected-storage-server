@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 
 const (
 	GrpcService_CreateUser_FullMethodName            = "/server.GrpcService/CreateUser"
+	GrpcService_LoginUser_FullMethodName             = "/server.GrpcService/LoginUser"
 	GrpcService_SaveRawData_FullMethodName           = "/server.GrpcService/SaveRawData"
 	GrpcService_SaveLoginWithPassword_FullMethodName = "/server.GrpcService/SaveLoginWithPassword"
 	GrpcService_SaveBinaryData_FullMethodName        = "/server.GrpcService/SaveBinaryData"
@@ -35,7 +36,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GrpcServiceClient interface {
-	CreateUser(ctx context.Context, in *UserAuthorizeRequest, opts ...grpc.CallOption) (*ErrorResponse, error)
+	CreateUser(ctx context.Context, in *UserRegisterRequest, opts ...grpc.CallOption) (*AuthorizedResponse, error)
+	LoginUser(ctx context.Context, in *UserAuthorizedRequest, opts ...grpc.CallOption) (*AuthorizedResponse, error)
 	SaveRawData(ctx context.Context, in *SaveRawDataRequest, opts ...grpc.CallOption) (*ErrorResponse, error)
 	SaveLoginWithPassword(ctx context.Context, in *SaveLoginWithPasswordRequest, opts ...grpc.CallOption) (*ErrorResponse, error)
 	SaveBinaryData(ctx context.Context, in *SaveBinaryDataRequest, opts ...grpc.CallOption) (*ErrorResponse, error)
@@ -55,9 +57,18 @@ func NewGrpcServiceClient(cc grpc.ClientConnInterface) GrpcServiceClient {
 	return &grpcServiceClient{cc}
 }
 
-func (c *grpcServiceClient) CreateUser(ctx context.Context, in *UserAuthorizeRequest, opts ...grpc.CallOption) (*ErrorResponse, error) {
-	out := new(ErrorResponse)
+func (c *grpcServiceClient) CreateUser(ctx context.Context, in *UserRegisterRequest, opts ...grpc.CallOption) (*AuthorizedResponse, error) {
+	out := new(AuthorizedResponse)
 	err := c.cc.Invoke(ctx, GrpcService_CreateUser_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *grpcServiceClient) LoginUser(ctx context.Context, in *UserAuthorizedRequest, opts ...grpc.CallOption) (*AuthorizedResponse, error) {
+	out := new(AuthorizedResponse)
+	err := c.cc.Invoke(ctx, GrpcService_LoginUser_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +160,8 @@ func (c *grpcServiceClient) GetAllSavedDataNames(ctx context.Context, in *GetAll
 // All implementations must embed UnimplementedGrpcServiceServer
 // for forward compatibility
 type GrpcServiceServer interface {
-	CreateUser(context.Context, *UserAuthorizeRequest) (*ErrorResponse, error)
+	CreateUser(context.Context, *UserRegisterRequest) (*AuthorizedResponse, error)
+	LoginUser(context.Context, *UserAuthorizedRequest) (*AuthorizedResponse, error)
 	SaveRawData(context.Context, *SaveRawDataRequest) (*ErrorResponse, error)
 	SaveLoginWithPassword(context.Context, *SaveLoginWithPasswordRequest) (*ErrorResponse, error)
 	SaveBinaryData(context.Context, *SaveBinaryDataRequest) (*ErrorResponse, error)
@@ -166,8 +178,11 @@ type GrpcServiceServer interface {
 type UnimplementedGrpcServiceServer struct {
 }
 
-func (UnimplementedGrpcServiceServer) CreateUser(context.Context, *UserAuthorizeRequest) (*ErrorResponse, error) {
+func (UnimplementedGrpcServiceServer) CreateUser(context.Context, *UserRegisterRequest) (*AuthorizedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateUser not implemented")
+}
+func (UnimplementedGrpcServiceServer) LoginUser(context.Context, *UserAuthorizedRequest) (*AuthorizedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LoginUser not implemented")
 }
 func (UnimplementedGrpcServiceServer) SaveRawData(context.Context, *SaveRawDataRequest) (*ErrorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SaveRawData not implemented")
@@ -210,7 +225,7 @@ func RegisterGrpcServiceServer(s grpc.ServiceRegistrar, srv GrpcServiceServer) {
 }
 
 func _GrpcService_CreateUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UserAuthorizeRequest)
+	in := new(UserRegisterRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -222,7 +237,25 @@ func _GrpcService_CreateUser_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: GrpcService_CreateUser_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GrpcServiceServer).CreateUser(ctx, req.(*UserAuthorizeRequest))
+		return srv.(GrpcServiceServer).CreateUser(ctx, req.(*UserRegisterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GrpcService_LoginUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserAuthorizedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GrpcServiceServer).LoginUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GrpcService_LoginUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GrpcServiceServer).LoginUser(ctx, req.(*UserAuthorizedRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -399,6 +432,10 @@ var GrpcService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateUser",
 			Handler:    _GrpcService_CreateUser_Handler,
+		},
+		{
+			MethodName: "LoginUser",
+			Handler:    _GrpcService_LoginUser_Handler,
 		},
 		{
 			MethodName: "SaveRawData",

@@ -7,10 +7,10 @@ import (
 
 func HandleFlag() {
 	flag.Func("a", "GRPc server address", func(aFlagValue string) error {
-		return os.Setenv("RUN_ADDRESS", aFlagValue)
+		return os.Setenv("SERVER_ADDRESS", aFlagValue)
 	})
 
 	flag.Func("d", "Address of db connection", func(dFlagValue string) error {
-		return os.Setenv("DATABASE_URI", dFlagValue)
+		return os.Setenv("DATABASE_DSN", dFlagValue)
 	})
 }

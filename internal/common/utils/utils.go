@@ -17,9 +17,9 @@ func GetKey() string {
 	return os.Getenv("SECRET_KEY")
 }
 
-// GetDBAddress получение переменной DATABASE_URI
+// GetDBAddress получение переменной DATABASE_DSN
 func GetDBAddress() string {
-	return os.Getenv("DATABASE_URI")
+	return os.Getenv("DATABASE_DSN")
 }
 
 // LoadEnvironments загрузка конфигов из .env файла
