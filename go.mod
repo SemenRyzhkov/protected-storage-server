@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/omeid/pgerror v0.0.0-20201018020948-42c66c4d27d4
 	github.com/rs/zerolog v1.29.0

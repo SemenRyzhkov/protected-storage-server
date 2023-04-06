@@ -14,10 +14,12 @@ import (
 	"protected-storage-server/internal/security"
 )
 
+// AuthInterceptor type
 type AuthInterceptor struct {
 	jwtManager *security.JWTManager
 }
 
+// NewAuthInterceptor constructor
 func NewAuthInterceptor(jwtManager *security.JWTManager) *AuthInterceptor {
 	return &AuthInterceptor{jwtManager}
 }
@@ -31,6 +33,7 @@ func accessibleMethods() []string {
 	}
 }
 
+// Unary is a gRPC auth interceptor
 func (interceptor *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,

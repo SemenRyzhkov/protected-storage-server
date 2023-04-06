@@ -40,10 +40,11 @@ func NewGRPC(cfg config.Config) (*GRPCApp, error) {
 
 	serverImpl := grpcserver.NewServer(userService, jwtManager)
 
-	interceptor := interceptors.NewAuthInterceptor(jwtManager)
+	authInterceptor := interceptors.NewAuthInterceptor(jwtManager)
+	logInterceptor := interceptors.NewLogInterceptor()
 
 	s := grpc.NewServer(
-		grpc.UnaryInterceptor(interceptor.Unary()),
+		grpc.ChainUnaryInterceptor(logInterceptor.Unary(), authInterceptor.Unary()),
 	)
 
 	proto.RegisterGrpcServiceServer(s, serverImpl)
