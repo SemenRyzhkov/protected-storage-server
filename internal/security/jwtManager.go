@@ -1,10 +1,12 @@
 package security
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"google.golang.org/grpc/metadata"
 )
 
 type JWTManager struct {
@@ -35,8 +37,26 @@ func (manager *JWTManager) GenerateJWT(userID, login string) (string, error) {
 	return token.SignedString([]byte(manager.secretKey))
 }
 
-func (manager *JWTManager) VerifyTokenAndExtractUserID(accessToken string) (string, error) {
-	token, err := jwt.ParseWithClaims(
+func (manager *JWTManager) ExtractUserID(ctx context.Context) (string, error) {
+	tokenString, err := manager.ExtractJWTFromContext(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	token, err := manager.ParseToken(tokenString)
+	if err != nil {
+		return "", err
+	}
+
+	claims, ok := token.Claims.(*UserClaims)
+	if !ok {
+		return "", fmt.Errorf("invalid token claims")
+	}
+	return claims.UserID, nil
+}
+
+func (manager *JWTManager) ParseToken(accessToken string) (*jwt.Token, error) {
+	return jwt.ParseWithClaims(
 		accessToken,
 		&UserClaims{},
 		func(token *jwt.Token) (interface{}, error) {
@@ -48,15 +68,17 @@ func (manager *JWTManager) VerifyTokenAndExtractUserID(accessToken string) (stri
 			return []byte(manager.secretKey), nil
 		},
 	)
+}
 
-	if err != nil || !token.Valid {
-		return "Token error", fmt.Errorf("invalid token: %w", err)
-	}
-
-	claims, ok := token.Claims.(*UserClaims)
+func (manager *JWTManager) ExtractJWTFromContext(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return "Token claims error", fmt.Errorf("invalid token claims")
+		return "", fmt.Errorf("metadata is not provided")
 	}
 
-	return claims.UserID, nil
+	values := md["authorization"]
+	if len(values) == 0 {
+		return "", fmt.Errorf("authorization token is not provided")
+	}
+	return values[0], nil
 }

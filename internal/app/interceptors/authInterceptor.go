@@ -6,7 +6,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	"golang.org/x/exp/slices"
@@ -57,19 +56,15 @@ func (interceptor *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 }
 
 func (interceptor *AuthInterceptor) authorize(ctx context.Context) error {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return status.Errorf(codes.Unauthenticated, "metadata is not provided")
-	}
-
-	values := md["authorization"]
-	if len(values) == 0 {
-		return status.Errorf(codes.Unauthenticated, "authorization token is not provided")
-	}
-
-	accessToken := values[0]
-	_, err := interceptor.jwtManager.VerifyTokenAndExtractUserID(accessToken)
+	accessToken, err := interceptor.jwtManager.ExtractJWTFromContext(ctx)
 	if err != nil {
+		return status.Errorf(codes.Unauthenticated, err.Error())
+	}
+
+	log.Printf("Access token is %s", accessToken)
+
+	token, err := interceptor.jwtManager.ParseToken(accessToken)
+	if err != nil || !token.Valid {
 		return status.Errorf(codes.Unauthenticated, "access token is invalid: %v", err)
 	}
 

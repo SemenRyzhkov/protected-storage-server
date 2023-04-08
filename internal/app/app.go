@@ -11,8 +11,10 @@ import (
 	"protected-storage-server/internal/config"
 	"protected-storage-server/internal/grpcserver"
 	"protected-storage-server/internal/repositories"
+	"protected-storage-server/internal/repositories/rawdatarepository"
 	"protected-storage-server/internal/repositories/userrepository"
 	"protected-storage-server/internal/security"
+	"protected-storage-server/internal/service/storageservice"
 	"protected-storage-server/internal/service/userservice"
 	"protected-storage-server/proto"
 )
@@ -32,19 +34,24 @@ func NewGRPC(cfg config.Config) (*GRPCApp, error) {
 	}
 
 	userRepository := userrepository.New(db)
+	rawDataRepository := rawdatarepository.New(db)
 	userService := userservice.New(userRepository)
 	jwtManager, err := security.NewJWTManager(cfg.Key, cfg.TokenDuration)
+	storageService := storageservice.New(rawDataRepository)
 	if err != nil {
 		return nil, err
 	}
 
-	serverImpl := grpcserver.NewServer(userService, jwtManager)
+	serverImpl := grpcserver.NewServer(userService, storageService, jwtManager)
 
 	authInterceptor := interceptors.NewAuthInterceptor(jwtManager)
 	logInterceptor := interceptors.NewLogInterceptor()
 
 	s := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(logInterceptor.Unary(), authInterceptor.Unary()),
+		grpc.ChainUnaryInterceptor(
+			logInterceptor.Unary(),
+			authInterceptor.Unary(),
+		),
 	)
 
 	proto.RegisterGrpcServiceServer(s, serverImpl)

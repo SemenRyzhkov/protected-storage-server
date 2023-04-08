@@ -10,6 +10,7 @@ import (
 
 	"protected-storage-server/internal/entity/myerrors"
 	"protected-storage-server/internal/security"
+	"protected-storage-server/internal/service/storageservice"
 	"protected-storage-server/internal/service/userservice"
 	"protected-storage-server/proto"
 )
@@ -17,13 +18,14 @@ import (
 // Server сервер
 type Server struct {
 	proto.UnimplementedGrpcServiceServer
-	userService userservice.UserService
-	jwtManager  *security.JWTManager
+	userService    userservice.UserService
+	storageService storageservice.StorageService
+	jwtManager     *security.JWTManager
 }
 
 // NewServer конструктор.
-func NewServer(userService userservice.UserService, jwtHelper *security.JWTManager) *Server {
-	return &Server{userService: userService, jwtManager: jwtHelper}
+func NewServer(userService userservice.UserService, storageService storageservice.StorageService, jwtHelper *security.JWTManager) *Server {
+	return &Server{userService: userService, jwtManager: jwtHelper, storageService: storageService}
 }
 
 // CreateUser выполняет сохранение нового пользователя, генерит токен и отдает в теле респонса
@@ -73,6 +75,34 @@ func (s *Server) LoginUser(ctx context.Context, in *proto.UserAuthorizedRequest)
 
 // SaveRawData выполняет сохранение текстовой информации для авторизованного пользователя
 func (s *Server) SaveRawData(ctx context.Context, in *proto.SaveRawDataRequest) (*proto.ErrorResponse, error) {
+	userID, err := s.jwtManager.ExtractUserID(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, err.Error())
+	}
 
-	return nil, nil
+	err = s.storageService.SaveRawData(ctx, in.Name, in.Data, userID)
+	if err != nil {
+		return nil, status.Errorf(codes.AlreadyExists, err.Error())
+	}
+
+	return &proto.ErrorResponse{}, nil
+}
+
+// GetRawData выполняет получение текстовой информации по названию для авторизованного пользователя
+func (s *Server) GetRawData(ctx context.Context, in *proto.GetRawDataRequest) (*proto.GetRawDataResponse, error) {
+	userID, err := s.jwtManager.ExtractUserID(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, err.Error())
+	}
+
+	data, err := s.storageService.GetRawData(ctx, in.Name, userID)
+	if err != nil {
+		var nf *myerrors.NotFoundError
+		if errors.As(err, &nf) {
+			return nil, status.Errorf(codes.NotFound, nf.Error())
+		}
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	return &proto.GetRawDataResponse{Data: data}, nil
 }
