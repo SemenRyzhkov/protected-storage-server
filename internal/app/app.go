@@ -37,7 +37,14 @@ func NewGRPC(cfg config.Config) (*GRPCApp, error) {
 	rawDataRepository := rawdatarepository.New(db)
 	userService := userservice.New(userRepository)
 	jwtManager, err := security.NewJWTManager(cfg.Key, cfg.TokenDuration)
-	storageService := storageservice.New(rawDataRepository)
+	if err != nil {
+		return nil, err
+	}
+	cipherManager, err := security.NewCipherManager(cfg.Key)
+	if err != nil {
+		return nil, err
+	}
+	storageService := storageservice.New(rawDataRepository, cipherManager)
 	if err != nil {
 		return nil, err
 	}

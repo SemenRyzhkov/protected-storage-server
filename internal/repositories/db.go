@@ -15,7 +15,7 @@ const (
 	initRawDataTableQuery = "" +
 		"CREATE TABLE IF NOT EXISTS public.raw_data (" +
 		"name varchar(45) unique not null, " +
-		"data text, " +
+		"data bytea, " +
 		"user_id varchar(45) references public.users (id)" +
 		")"
 )

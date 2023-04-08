@@ -5,6 +5,6 @@ import (
 )
 
 type RawDataRepository interface {
-	Save(ctx context.Context, userID, name, data string) error
-	GetByName(ctx context.Context, userID, name string) (string, error)
+	Save(ctx context.Context, userID, name string, data []byte) error
+	GetByName(ctx context.Context, userID, name string) ([]byte, error)
 }

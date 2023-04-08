@@ -82,7 +82,11 @@ func (s *Server) SaveRawData(ctx context.Context, in *proto.SaveRawDataRequest) 
 
 	err = s.storageService.SaveRawData(ctx, in.Name, in.Data, userID)
 	if err != nil {
-		return nil, status.Errorf(codes.AlreadyExists, err.Error())
+		var dv *myerrors.DataViolationError
+		if errors.As(err, &dv) {
+			return nil, status.Errorf(codes.AlreadyExists, dv.Error())
+		}
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	return &proto.ErrorResponse{}, nil

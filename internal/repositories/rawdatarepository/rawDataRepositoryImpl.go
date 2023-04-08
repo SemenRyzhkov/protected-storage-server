@@ -31,7 +31,7 @@ func New(db *sql.DB) RawDataRepository {
 }
 
 // Save сохранение произвольных текстовых данных
-func (r *rawDataRepositoryImpl) Save(ctx context.Context, userID, name, data string) error {
+func (r *rawDataRepositoryImpl) Save(ctx context.Context, userID, name string, data []byte) error {
 	log.Info().Msgf("rawdatarepository: save raw data with name %s for user with ID %s to db", name, userID)
 	_, err := r.db.ExecContext(ctx, insertRawDataQuery, name, data, userID)
 
@@ -45,16 +45,16 @@ func (r *rawDataRepositoryImpl) Save(ctx context.Context, userID, name, data str
 }
 
 // GetByName получение произвольных текстовых данных
-func (r *rawDataRepositoryImpl) GetByName(ctx context.Context, userID, name string) (string, error) {
-	var data string
+func (r *rawDataRepositoryImpl) GetByName(ctx context.Context, userID, name string) ([]byte, error) {
+	var data []byte
 	log.Info().Msgf("rawdatarepository: get raw data with name %s for user with ID %s to db", name, userID)
 	row := r.db.QueryRowContext(ctx, getRawDataQuery, userID, name)
 	err := row.Scan(&data)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", myerrors.NewNotFoundError(name, err)
+			return nil, myerrors.NewNotFoundError(name, err)
 		}
-		return "", err
+		return nil, err
 	}
 	return data, nil
 }
