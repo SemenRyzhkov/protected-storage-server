@@ -12,9 +12,10 @@ const (
 		"login varchar(45) unique not null, " +
 		"password varchar(45) not null" +
 		")"
-	initRawDataTableQuery = "" +
+	initDataTableQuery = "" +
 		"CREATE TABLE IF NOT EXISTS public.raw_data (" +
 		"name varchar(45) unique not null, " +
+		"data_type int2 not null, " +
 		"data bytea, " +
 		"user_id varchar(45) references public.users (id)" +
 		")"
@@ -45,7 +46,7 @@ func createTableIfNotExists(db *sql.DB) error {
 		return createUserTableErr
 	}
 
-	_, createRawDataTableErr := db.Exec(initRawDataTableQuery)
+	_, createRawDataTableErr := db.Exec(initDataTableQuery)
 	if createRawDataTableErr != nil {
 		return createRawDataTableErr
 	}

@@ -11,10 +11,10 @@ import (
 	"protected-storage-server/internal/config"
 	"protected-storage-server/internal/grpcserver"
 	"protected-storage-server/internal/repositories"
-	"protected-storage-server/internal/repositories/rawdatarepository"
+	"protected-storage-server/internal/repositories/datarepository"
 	"protected-storage-server/internal/repositories/userrepository"
 	"protected-storage-server/internal/security"
-	"protected-storage-server/internal/service/storageservice"
+	"protected-storage-server/internal/service/dataservice"
 	"protected-storage-server/internal/service/userservice"
 	"protected-storage-server/proto"
 )
@@ -34,7 +34,7 @@ func NewGRPC(cfg config.Config) (*GRPCApp, error) {
 	}
 
 	userRepository := userrepository.New(db)
-	rawDataRepository := rawdatarepository.New(db)
+	rawDataRepository := datarepository.New(db)
 	userService := userservice.New(userRepository)
 	jwtManager, err := security.NewJWTManager(cfg.Key, cfg.TokenDuration)
 	if err != nil {
@@ -44,7 +44,7 @@ func NewGRPC(cfg config.Config) (*GRPCApp, error) {
 	if err != nil {
 		return nil, err
 	}
-	storageService := storageservice.New(rawDataRepository, cipherManager)
+	storageService := dataservice.New(rawDataRepository, cipherManager)
 	if err != nil {
 		return nil, err
 	}

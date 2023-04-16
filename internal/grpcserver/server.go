@@ -10,7 +10,7 @@ import (
 
 	"protected-storage-server/internal/entity/myerrors"
 	"protected-storage-server/internal/security"
-	"protected-storage-server/internal/service/storageservice"
+	"protected-storage-server/internal/service/dataservice"
 	"protected-storage-server/internal/service/userservice"
 	"protected-storage-server/proto"
 )
@@ -19,12 +19,12 @@ import (
 type Server struct {
 	proto.UnimplementedGrpcServiceServer
 	userService    userservice.UserService
-	storageService storageservice.StorageService
+	storageService dataservice.StorageService
 	jwtManager     *security.JWTManager
 }
 
 // NewServer конструктор.
-func NewServer(userService userservice.UserService, storageService storageservice.StorageService, jwtHelper *security.JWTManager) *Server {
+func NewServer(userService userservice.UserService, storageService dataservice.StorageService, jwtHelper *security.JWTManager) *Server {
 	return &Server{userService: userService, jwtManager: jwtHelper, storageService: storageService}
 }
 
@@ -109,4 +109,42 @@ func (s *Server) GetRawData(ctx context.Context, in *proto.GetRawDataRequest) (*
 	}
 
 	return &proto.GetRawDataResponse{Data: data}, nil
+}
+
+// SaveLoginWithPassword выполняет сохранение текстовой информации для авторизованного пользователя
+func (s *Server) SaveLoginWithPassword(ctx context.Context, in *proto.SaveLoginWithPasswordRequest) (*proto.ErrorResponse, error) {
+	userID, err := s.jwtManager.ExtractUserID(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, err.Error())
+	}
+
+	err = s.storageService.SaveLoginWithPassword(ctx, in.Name, in.Login, in.Password, userID)
+	if err != nil {
+		var dv *myerrors.DataViolationError
+		if errors.As(err, &dv) {
+			return nil, status.Errorf(codes.AlreadyExists, dv.Error())
+		}
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	return &proto.ErrorResponse{}, nil
+}
+
+// GetLoginWithPassword выполняет получение текстовой информации по названию для авторизованного пользователя
+func (s *Server) GetLoginWithPassword(ctx context.Context, in *proto.GetLoginWithPasswordRequest) (*proto.GetLoginWithPasswordResponse, error) {
+	userID, err := s.jwtManager.ExtractUserID(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, err.Error())
+	}
+
+	data, err := s.storageService.GetLoginWithPassword(ctx, in.Name, userID)
+	if err != nil {
+		var nf *myerrors.NotFoundError
+		if errors.As(err, &nf) {
+			return nil, status.Errorf(codes.NotFound, nf.Error())
+		}
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	return &proto.GetLoginWithPasswordResponse{Login: data.Login, Password: data.Password}, nil
 }
