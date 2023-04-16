@@ -67,6 +67,47 @@ func (s storageServiceImpl) GetLoginWithPassword(ctx context.Context, name, user
 	return cred, nil
 }
 
+// SaveBinaryData метод для сохранения бинарных данных
+func (s storageServiceImpl) SaveBinaryData(ctx context.Context, name string, data []byte, userID string) error {
+	log.Info().Msgf("dataservice: save binary data for user with ID %s", userID)
+	return s.encryptAndSaveData(ctx, name, userID, data, entity.FILE)
+}
+
+// GetBinaryData метод для получения логина и пароля
+func (s storageServiceImpl) GetBinaryData(ctx context.Context, name, userID string) ([]byte, error) {
+	log.Info().Msgf("dataservice: get binary data with name %s for user with ID %s", name, userID)
+	return s.getAndDecryptData(ctx, name, userID, entity.FILE)
+}
+
+// SaveCardData метод для сохранения данных банковской карты
+func (s storageServiceImpl) SaveCardData(ctx context.Context, name string, cardData entity.CardDataDTO, userID string) error {
+	log.Info().Msgf("dataservice: save card data for user with ID %s", userID)
+
+	marshalledCardData, err := json.Marshal(cardData)
+	if err != nil {
+		return err
+	}
+
+	return s.encryptAndSaveData(ctx, name, userID, marshalledCardData, entity.CARD)
+}
+
+// GetCardData метод для получения данных банковской карты
+func (s storageServiceImpl) GetCardData(ctx context.Context, name, userID string) (entity.CardDataDTO, error) {
+	log.Info().Msgf("dataservice: get card data with name %s for user with ID %s", name, userID)
+
+	decryptData, err := s.getAndDecryptData(ctx, name, userID, entity.CARD)
+	if err != nil {
+		return entity.CardDataDTO{}, err
+	}
+
+	card := entity.CardDataDTO{}
+	if err := json.Unmarshal(decryptData, &card); err != nil {
+		return entity.CardDataDTO{}, err
+	}
+
+	return card, nil
+}
+
 func (s storageServiceImpl) encryptAndSaveData(
 	ctx context.Context,
 	name, userID string,

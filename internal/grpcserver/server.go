@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"protected-storage-server/internal/entity"
 	"protected-storage-server/internal/entity/myerrors"
 	"protected-storage-server/internal/security"
 	"protected-storage-server/internal/service/dataservice"
@@ -28,7 +29,7 @@ func NewServer(userService userservice.UserService, storageService dataservice.S
 	return &Server{userService: userService, jwtManager: jwtHelper, storageService: storageService}
 }
 
-// CreateUser выполняет сохранение нового пользователя, генерит токен и отдает в теле респонса
+// CreateUser эндпойнт сохранения нового пользователя, генерит токен и отдает в теле респонса
 func (s *Server) CreateUser(ctx context.Context, in *proto.UserRegisterRequest) (*proto.AuthorizedResponse, error) {
 	login := in.Login
 	password := in.Password
@@ -51,7 +52,7 @@ func (s *Server) CreateUser(ctx context.Context, in *proto.UserRegisterRequest) 
 	return &proto.AuthorizedResponse{Token: token}, nil
 }
 
-// LoginUser выполняет авторизацию существующего пользователя, генерит токен и отдает в теле респонса
+// LoginUser эндпойнт авторизации существующего пользователя, генерит токен и отдает в теле респонса
 func (s *Server) LoginUser(ctx context.Context, in *proto.UserAuthorizedRequest) (*proto.AuthorizedResponse, error) {
 	login := in.Login
 	password := in.Password
@@ -73,7 +74,7 @@ func (s *Server) LoginUser(ctx context.Context, in *proto.UserAuthorizedRequest)
 	return &proto.AuthorizedResponse{Token: token}, nil
 }
 
-// SaveRawData выполняет сохранение текстовой информации для авторизованного пользователя
+// SaveRawData эндпойнт сохранения произвольной текстовой информации для авторизованного пользователя
 func (s *Server) SaveRawData(ctx context.Context, in *proto.SaveRawDataRequest) (*proto.ErrorResponse, error) {
 	userID, err := s.jwtManager.ExtractUserID(ctx)
 	if err != nil {
@@ -92,7 +93,7 @@ func (s *Server) SaveRawData(ctx context.Context, in *proto.SaveRawDataRequest) 
 	return &proto.ErrorResponse{}, nil
 }
 
-// GetRawData выполняет получение текстовой информации по названию для авторизованного пользователя
+// GetRawData эндпойнт получения текстовой информации по названию для авторизованного пользователя
 func (s *Server) GetRawData(ctx context.Context, in *proto.GetRawDataRequest) (*proto.GetRawDataResponse, error) {
 	userID, err := s.jwtManager.ExtractUserID(ctx)
 	if err != nil {
@@ -111,7 +112,7 @@ func (s *Server) GetRawData(ctx context.Context, in *proto.GetRawDataRequest) (*
 	return &proto.GetRawDataResponse{Data: data}, nil
 }
 
-// SaveLoginWithPassword выполняет сохранение текстовой информации для авторизованного пользователя
+// SaveLoginWithPassword эндпойнт сохранения логина и пароля для авторизованного пользователя
 func (s *Server) SaveLoginWithPassword(ctx context.Context, in *proto.SaveLoginWithPasswordRequest) (*proto.ErrorResponse, error) {
 	userID, err := s.jwtManager.ExtractUserID(ctx)
 	if err != nil {
@@ -130,7 +131,7 @@ func (s *Server) SaveLoginWithPassword(ctx context.Context, in *proto.SaveLoginW
 	return &proto.ErrorResponse{}, nil
 }
 
-// GetLoginWithPassword выполняет получение текстовой информации по названию для авторизованного пользователя
+// GetLoginWithPassword эндпойнт получения логина и пароля по названию для авторизованного пользователя
 func (s *Server) GetLoginWithPassword(ctx context.Context, in *proto.GetLoginWithPasswordRequest) (*proto.GetLoginWithPasswordResponse, error) {
 	userID, err := s.jwtManager.ExtractUserID(ctx)
 	if err != nil {
@@ -147,4 +148,87 @@ func (s *Server) GetLoginWithPassword(ctx context.Context, in *proto.GetLoginWit
 	}
 
 	return &proto.GetLoginWithPasswordResponse{Login: data.Login, Password: data.Password}, nil
+}
+
+// SaveBinaryData эндпойнт сохранения произвольных бинарных данных для авторизованного пользователя
+func (s *Server) SaveBinaryData(ctx context.Context, in *proto.SaveBinaryDataRequest) (*proto.ErrorResponse, error) {
+	userID, err := s.jwtManager.ExtractUserID(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, err.Error())
+	}
+
+	err = s.storageService.SaveBinaryData(ctx, in.Name, in.Data, userID)
+	if err != nil {
+		var dv *myerrors.DataViolationError
+		if errors.As(err, &dv) {
+			return nil, status.Errorf(codes.AlreadyExists, dv.Error())
+		}
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	return &proto.ErrorResponse{}, nil
+}
+
+// GetBinaryData эндпойнт получения произвольных бинарных данных по названию для авторизованного пользователя
+func (s *Server) GetBinaryData(ctx context.Context, in *proto.GetBinaryDataRequest) (*proto.GetBinaryDataResponse, error) {
+	userID, err := s.jwtManager.ExtractUserID(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, err.Error())
+	}
+
+	data, err := s.storageService.GetBinaryData(ctx, in.Name, userID)
+	if err != nil {
+		var nf *myerrors.NotFoundError
+		if errors.As(err, &nf) {
+			return nil, status.Errorf(codes.NotFound, nf.Error())
+		}
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	return &proto.GetBinaryDataResponse{Data: data}, nil
+}
+
+// SaveCardData эндпойнт сохранения данных банковской карты для авторизованного пользователя
+func (s *Server) SaveCardData(ctx context.Context, in *proto.SaveCardDataRequest) (*proto.ErrorResponse, error) {
+	userID, err := s.jwtManager.ExtractUserID(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, err.Error())
+	}
+
+	card := entity.CardDataDTO{
+		Number:     in.Number,
+		Month:      in.Month,
+		Year:       in.Year,
+		CardHolder: in.CardHolder,
+	}
+
+	err = s.storageService.SaveCardData(ctx, in.Name, card, userID)
+	if err != nil {
+		var dv *myerrors.DataViolationError
+		if errors.As(err, &dv) {
+			return nil, status.Errorf(codes.AlreadyExists, dv.Error())
+		}
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	return &proto.ErrorResponse{}, nil
+}
+
+// GetCardData эндпойнт получения данных банковской карты по названию для авторизованного пользователя
+func (s *Server) GetCardData(ctx context.Context, in *proto.GetCardDataRequest) (*proto.GetCardDataResponse, error) {
+	userID, err := s.jwtManager.ExtractUserID(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, err.Error())
+	}
+
+	data, err := s.storageService.GetCardData(ctx, in.Name, userID)
+	if err != nil {
+		var nf *myerrors.NotFoundError
+		if errors.As(err, &nf) {
+			return nil, status.Errorf(codes.NotFound, nf.Error())
+		}
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	return &proto.GetCardDataResponse{Number: data.Number, Month: data.Number, Year: data.Year, CardHolder: data.CardHolder}, nil
 }
