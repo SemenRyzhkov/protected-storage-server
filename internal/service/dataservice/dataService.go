@@ -18,4 +18,6 @@ type StorageService interface {
 
 	SaveCardData(ctx context.Context, name string, cardData entity.CardDataDTO, userID string) error
 	GetCardData(ctx context.Context, name, userID string) (entity.CardDataDTO, error)
+
+	GetAllSavedDataNames(ctx context.Context, userID string) ([]string, error)
 }

@@ -108,6 +108,12 @@ func (s storageServiceImpl) GetCardData(ctx context.Context, name, userID string
 	return card, nil
 }
 
+// GetAllSavedDataNames метод для получения всех названий сохранений
+func (s storageServiceImpl) GetAllSavedDataNames(ctx context.Context, userID string) ([]string, error) {
+	log.Info().Msgf("dataservice: get data names for user with ID %s", userID)
+	return s.rawDataRepository.GetAllSavedDataNames(ctx, userID)
+}
+
 func (s storageServiceImpl) encryptAndSaveData(
 	ctx context.Context,
 	name, userID string,

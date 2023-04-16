@@ -232,3 +232,18 @@ func (s *Server) GetCardData(ctx context.Context, in *proto.GetCardDataRequest) 
 
 	return &proto.GetCardDataResponse{Number: data.Number, Month: data.Number, Year: data.Year, CardHolder: data.CardHolder}, nil
 }
+
+// GetAllSavedDataNames метод для получения всех названий сохранений
+func (s *Server) GetAllSavedDataNames(ctx context.Context, in *proto.GetAllSavedDataNamesRequest) (*proto.GetAllSavedDataNamesResponse, error) {
+	userID, err := s.jwtManager.ExtractUserID(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, err.Error())
+	}
+
+	names, err := s.storageService.GetAllSavedDataNames(ctx, userID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	return &proto.GetAllSavedDataNamesResponse{SavedDataNames: names}, nil
+}

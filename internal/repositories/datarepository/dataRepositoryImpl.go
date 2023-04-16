@@ -18,6 +18,10 @@ const (
 	getDataQuery = "" +
 		"SELECT data FROM public.raw_data " +
 		"WHERE user_id=$1 AND name=$2 AND data_type=$3"
+	getAllDataNamesByUserIDQuery = "" +
+		"SELECT name " +
+		"FROM public.raw_data " +
+		"WHERE user_id=$1"
 )
 
 type rawDataRepositoryImpl struct {
@@ -58,4 +62,34 @@ func (r *rawDataRepositoryImpl) GetByNameAndTypeAndUserID(ctx context.Context, u
 		return nil, err
 	}
 	return data, nil
+}
+
+// GetAllSavedDataNames метод для получения всех названий сохранений
+func (r *rawDataRepositoryImpl) GetAllSavedDataNames(ctx context.Context, userID string) ([]string, error) {
+	nameList := make([]string, 0)
+
+	log.Info().Msgf("datarepository: get data names for user with ID %s from db", userID)
+	rows, err := r.db.QueryContext(ctx, getAllDataNamesByUserIDQuery, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var n string
+		err = rows.Scan(&n)
+		if err != nil {
+			return nil, err
+		}
+
+		nameList = append(nameList, n)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return nameList, nil
 }
